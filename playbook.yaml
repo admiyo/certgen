@@ -1,0 +1,56 @@
+---
+- hosts: localhost
+  vars:
+    target_dir: ~/certificates
+    secret_dir: "{{ target_dir }}/private"
+    cert_dir: "{{ target_dir }}/certs"
+
+    ca_key: "{{ secret_dir }}/ca.key"
+    ca_cert: "{{ cert_dir }}/ca.crt"
+    ca_password_filename: ca_pass
+    ca_subject: "/Country=US/State=Massachusetts/Locality=Boston"
+
+  tasks:
+    - name: generate dir structure
+      file:
+         path: "{{ target_dir }}/{{ item }}"
+         state: directory
+         mode: "0700"
+      with_items:
+      - "{{ secret_dir }}"
+      - "{{ cert_dir }}"
+
+    - name: copying conf files
+      copy:
+        src: "files/{{ item  }}"
+        dest: "{{ target_dir }}"
+        force: no
+      with_items:
+      - serial
+      - openssl.cnf
+
+    - name: copying private files
+      copy:
+        src: "files/{{ item  }}"
+        dest: "{{ secret_dir }}"
+        force: no
+      with_items:
+      - "{{ ca_password_filename }}"
+
+    - name: Check if the CA key exists
+      stat:
+        path: "{{ ca_key }}"
+      register: ca_key_exists
+
+    - name: create CA secret      
+      shell: "openssl genrsa -out {{ ca_key }} 2048"
+      when: ca_key_exists.stat.exists == False
+
+    - name: Check if the CA cert exists
+      stat:
+        path: "{{ ca_cert }}"
+      register: ca_cert_exists
+
+    - name: create CA cert      
+      shell: "openssl req -config {{ target_dir }}/openssl.cnf -new -key {{ ca_key }} -x509 -days 1825 -out {{ ca_cert }} -passin pass:keystone -subj \"{{ ca_subject }}\""
+      when: ca_cert_exists.stat.exists == False

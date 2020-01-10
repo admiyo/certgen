@@ -10,6 +10,18 @@
     ca_password_filename: ca_pass
     ca_subject: "/Country=US/State=Massachusetts/Locality=Boston"
 
+
+    server_key: "{{ secret_dir }}/server.key"
+    server_cert: "{{ cert_dir }}/server.crt"
+    server_password_filename: server_pass
+    server_subject: "/Country=US/State=Massachusetts/Locality=Boston"
+
+    client_key: "{{ secret_dir }}/client.key"
+    client_cert: "{{ cert_dir }}/client.crt"
+    client_password_filename: client_pass
+    client_subject: "/Country=US/State=Massachusetts/Locality=Boston"
+
+
   tasks:
     - name: generate dir structure
       file:
@@ -36,6 +48,7 @@
         force: no
       with_items:
       - "{{ ca_password_filename }}"
+      - "{{ server_password_filename }}"
 
     - name: Check if the CA key exists
       stat:
@@ -54,3 +67,42 @@
     - name: create CA cert      
       shell: "openssl req -config {{ target_dir }}/openssl.cnf -new -key {{ ca_key }} -x509 -days 1825 -out {{ ca_cert }} -passin pass:keystone -subj \"{{ ca_subject }}\""
       when: ca_cert_exists.stat.exists == False
+
+
+    - name: Check if the server key exists
+      stat:
+        path: "{{ server_key }}"
+      register: server_key_exists
+
+    - name: create server secret      
+      shell: "openssl genrsa -out {{ server_key }} 2048"
+      when: server_key_exists.stat.exists == False
+
+    - name: Check if the server cert exists
+      stat:
+        path: "{{ server_cert }}"
+      register: server_cert_exists
+
+    - name: create server cert      
+      shell: "openssl req -config {{ target_dir }}/openssl.cnf -new -key {{ server_key }} -x509 -days 1825 -out {{ server_cert }} -passin pass:keystone -subj \"{{ server_subject }}\""
+      when: server_cert_exists.stat.exists == False
+
+
+
+    - name: Check if the client key exists
+      stat:
+        path: "{{ client_key }}"
+      register: client_key_exists
+
+    - name: create client secret      
+      shell: "openssl genrsa -out {{ client_key }} 2048"
+      when: client_key_exists.stat.exists == False
+
+    - name: Check if the client cert exists
+      stat:
+        path: "{{ client_cert }}"
+      register: client_cert_exists
+
+    - name: create client cert      
+      shell: "openssl req -config {{ target_dir }}/openssl.cnf -new -key {{ client_key }} -x509 -days 1825 -out {{ client_cert }} -passin pass:keystone -subj \"{{ client_subject }}\""
+      when: client_cert_exists.stat.exists == False
